@@ -8,11 +8,10 @@ from model import IndustryMAE
 def main():
     print("=================== 📦 正在执行滚动推理收网 ===================")
     
-    # 1. 读数据与清洗
+    # 1. 读数据并强制对齐你训练时的 65 维尺度
     raw_data = np.load(config.DATA_PATH).astype(np.float32)
     if raw_data.ndim == 2 and raw_data.shape[0] == 65: 
         raw_data = raw_data.T
-    clean_data = advanced_clean_data(raw_data)
     
     # 2. 读取之前保存的归一化参数（保证尺度和训练时 100% 一致）
     scaler = np.load(config.SCALER_SAVE_PATH)
