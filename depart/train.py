@@ -11,13 +11,33 @@ from model import IndustryMAE
 def main():
     print(f"🔥 开始训练！使用的设备: {config.DEVICE}")
     
-    # 1. 读数据与清洗
-    raw_data = np.load(config.DATA_PATH).astype(np.float32)
-    if raw_data.ndim == 2 and raw_data.shape[0] == 65: 
-        raw_data = raw_data.T
-    clean_data = advanced_clean_data(raw_data)
+    # 1. 锁死直接读取你准备好的 cleaned_data.csv
+    import pandas as pd
+    CSV_PATH = "cleaned_data.csv"
+    print(f"📂 正在直接读取你指定的清洗后数据集: {CSV_PATH}...")
     
-    # 2. 归一化并【保存归一化参数】，这一步极其关键！
+    df = pd.read_csv(CSV_PATH)
+    
+    # 💡 安全机制 1：剔除文本时间列
+    if '时间' in df.columns:
+        df = df.drop(columns=['时间'])
+    if 'Time_Step(时间步)' in df.columns:
+        df = df.drop(columns=['Time_Step(时间步)'])
+        
+    clean_data = df.values.astype(np.float32)
+    print(f"📊 CSV数据加载成功！当前矩阵形状为: {clean_data.shape}")
+    
+    # 💡 安全机制 2：动态兼容列数（对齐模型底层的刚性结构）
+    current_cols = clean_data.shape[1]
+    if current_cols != 65:
+        print(f"⚠️ 警告：你的CSV只有 {current_cols} 列（可能因为data_clean.py删除了死通道）。")
+        print(f"🛠️ 正在自动补齐至 65 列，以防大模型报错崩溃...")
+        # 如果列数不够65，自动在右侧用0补齐到65列
+        padding = np.zeros((clean_data.shape[0], 65 - current_cols), dtype=np.float32)
+        clean_data = np.hstack([clean_data, padding])
+        print(f"✅ 补齐完成！最终矩阵形状已对齐为: {clean_data.shape}")
+
+    # 2. 归一化并【保存归一化参数】
     mean = np.mean(clean_data, axis=0)
     std = np.std(clean_data, axis=0) + 1e-5
     np.save(config.SCALER_SAVE_PATH, np.stack([mean, std]))
